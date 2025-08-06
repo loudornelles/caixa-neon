@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Button,
@@ -10,98 +10,108 @@ import {
 } from "@mui/material";
 
 export default function CaixaForm() {
-  const [form, setForm] = useState({
+  const [cliente, setCliente] = useState("");
+  const [produtoAtual, setProdutoAtual] = useState({
     produto: "",
-    precoInicial: 0,
+    quantidade: 1,
+    precoUnitario: 0,
     cupom: "",
     desconto: 0,
-    precoFinal: 0,
-    metodo: "",
-    pagamento: 0,
-    troco: 0,
-    quantidade: 1,
   });
 
-  useEffect(() => {
-    const precoFinal = form.precoInicial * form.quantidade - form.desconto;
+  const [itens, setItens] = useState([]);
+  const [metodo, setMetodo] = useState("");
+  const [pagamento, setPagamento] = useState(0);
 
-    const troco = form.metodo === "Dinheiro" ? form.pagamento - precoFinal : 0;
-
-    setForm((prev) => ({
-      ...prev,
-      precoFinal,
-      troco,
-    }));
-  }, [
-    form.precoInicial,
-    form.desconto,
-    form.pagamento,
-    form.metodo,
-    form.quantidade,
-  ]);
-
-  const handleChange = (e) => {
+  const handleProdutoChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({
+    setProdutoAtual((prev) => ({
       ...prev,
-      [name]: [
-        "precoInicial",
-        "desconto",
-        "precoFinal",
-        "pagamento",
-        "troco",
-        "quantidade",
-      ].includes(name)
+      [name]: ["quantidade", "precoUnitario", "desconto"].includes(name)
         ? parseFloat(value || 0)
         : value,
     }));
   };
 
-  // const calcularFinal = () => {
-  //   const precoFinal = form.precoInicial - form.desconto;
-  //   const troco = form.pagamento - precoFinal;
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     precoFinal,
-  //     troco,
-  //   }));
-  // };
+  const aplicarCupom = () => {
+    let desconto = 0;
+    if (produtoAtual.cupom === "10%") {
+      desconto = produtoAtual.precoUnitario * 0.1;
+    } else if (produtoAtual.cupom === "2 por 1") {
+      desconto = produtoAtual.precoUnitario;
+    }
+    setProdutoAtual((prev) => ({ ...prev, desconto }));
+  };
+
+  const adicionarProduto = () => {
+    if (!produtoAtual.produto || produtoAtual.quantidade < 1) return;
+
+    const precoTotal =
+      produtoAtual.precoUnitario * produtoAtual.quantidade -
+      produtoAtual.desconto;
+
+    const novoItem = {
+      ...produtoAtual,
+      precoTotal,
+    };
+
+    setItens((prev) => [...prev, novoItem]);
+
+    setProdutoAtual({
+      produto: "",
+      quantidade: 1,
+      precoUnitario: 0,
+      cupom: "",
+      desconto: 0,
+    });
+  };
+
+  const precoFinal = itens.reduce((acc, item) => acc + item.precoTotal, 0);
+  const troco = metodo === "Dinheiro" ? pagamento - precoFinal : 0;
+
+  const removerItem = (index) => {
+    setItens((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const gerarPedidoId = () => {
+    const nomeFormatado = cliente.trim().toLowerCase().replace(/\s+/g, "-");
+    const sufixo = Math.floor(Math.random() * 1000);
+    return `N-${nomeFormatado}-${sufixo}`;
+  };
 
   const enviarVenda = async () => {
-    const idGerado = `NEON-${Date.now()}`;
     const baseUrl =
       "https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec";
 
-    const params = new URLSearchParams({
-      id: idGerado,
-      produto: form.produto,
-      quantidade: form.quantidade.toString(),
-      precoInicial: form.precoInicial.toString(),
-      cupom: form.cupom,
-      desconto: form.desconto.toString(),
-      precoFinal: form.precoFinal.toString(),
-      metodo: form.metodo,
-      pagamento: form.pagamento.toString(),
-      troco: form.troco.toString(),
-    });
-
+    const pedidoId = gerarPedidoId();
     try {
-      const res = await fetch(`${baseUrl}?${params.toString()}`);
-      const text = await res.text();
-      alert("✅ Venda registrada com sucesso!");
-      console.log(text);
+      for (const item of itens) {
+        for (let i = 0; i < item.quantidade; i++) {
+          const params = new URLSearchParams({
+            id: pedidoId,
+            cliente,
+            produto: item.produto,
+            quantidade: "1",
+            precoInicial: item.precoUnitario.toString(),
+            cupom: item.cupom,
+            desconto: (item.desconto / item.quantidade).toFixed(2),
+            precoFinal: (item.precoTotal / item.quantidade).toFixed(2),
+            metodo,
+            pagamento:
+              metodo === "Dinheiro" ? (pagamento / precoFinal).toFixed(2) : "0",
+            troco:
+              metodo === "Dinheiro" ? (troco / precoFinal).toFixed(2) : "0",
+          });
 
-      setForm({
-        produto: "",
-        quantidade: 1,
-        precoInicial: 0,
-        cupom: "",
-        desconto: 0,
-        precoFinal: 0,
-        metodo: "",
-        pagamento: 0,
-        troco: 0,
-      });
+          await fetch(`${baseUrl}?${params.toString()}`);
+        }
+      }
+
+      alert("✅ Venda registrada com sucesso!");
+      setItens([]);
+      setMetodo("");
+      setPagamento(0);
+      setCliente("");
     } catch (error) {
       alert("❌ Erro ao enviar a venda.");
       console.error(error);
@@ -112,69 +122,53 @@ export default function CaixaForm() {
     <Box
       component={Paper}
       elevation={4}
-      sx={{
-        maxWidth: 400,
-        mx: "auto",
-        mt: 4,
-        p: 3,
-        borderRadius: 3,
-      }}
+      sx={{ maxWidth: 500, mx: "auto", mt: 4, p: 3 }}
     >
       <Typography variant="h5" align="center" gutterBottom>
         Caixa Neon
       </Typography>
 
+      <TextField
+        label="Nome do Cliente"
+        value={cliente}
+        onChange={(e) => setCliente(e.target.value)}
+        fullWidth
+        margin="normal"
+      />
+
+      {/* Seletor de Produto */}
       <Typography variant="subtitle1" sx={{ mt: 2 }}>
         Produto
       </Typography>
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 1,
-          justifyContent: "center",
-          mb: 2,
-        }}
-      >
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
         {[
-          "Brigadeiro",
           "Bolo de Chocolate",
-          "Doguinho",
+          "Brigadeiro",
           "Correio Neon",
           "Cupcake",
+          "Doguinho",
           "Hambúrguer",
           "Refri (150ml)",
           "Água Saborizada (150ml)",
-        ].map((produto) => (
+        ].map((nome) => (
           <Button
-            key={produto}
-            variant={form.produto === produto ? "contained" : "outlined"}
+            key={nome}
+            variant={produtoAtual.produto === nome ? "contained" : "outlined"}
             onClick={async () => {
-              try {
-                const res = await fetch(
-                  `https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec?produto=${encodeURIComponent(
-                    produto
-                  )}`
-                );
-                const data = await res.json();
-
-                setForm((prev) => ({
-                  ...prev,
-                  produto,
-                  precoInicial: parseFloat(data.preco || 0),
-                  desconto: 0,
-                  precoFinal: 0,
-                  troco: 0,
-                  cupom: "",
-                }));
-              } catch (error) {
-                alert("Erro ao buscar o preço.");
-                console.error(error);
-              }
+              const res = await fetch(
+                `https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec?produto=${encodeURIComponent(
+                  nome
+                )}`
+              );
+              const data = await res.json();
+              setProdutoAtual((prev) => ({
+                ...prev,
+                produto: nome,
+                precoUnitario: parseFloat(data.preco || 0),
+              }));
             }}
-            sx={{ minWidth: 120 }}
           >
-            {produto}
+            {nome}
           </Button>
         ))}
       </Box>
@@ -183,11 +177,11 @@ export default function CaixaForm() {
         label="Quantidade"
         name="quantidade"
         type="number"
-        value={form.quantidade}
-        onChange={handleChange}
+        value={produtoAtual.quantidade}
+        onChange={handleProdutoChange}
         fullWidth
         margin="normal"
-        input={{ min: 1 }}
+        inputProps={{ min: 1 }}
       />
 
       <Typography variant="subtitle1" sx={{ mt: 2 }}>
@@ -196,23 +190,11 @@ export default function CaixaForm() {
       <Select
         fullWidth
         name="cupom"
-        value={form.cupom}
+        value={produtoAtual.cupom}
         onChange={(e) => {
-          const cupom = e.target.value;
-          let desconto = 0;
-
-          if (cupom === "10%") {
-            desconto = form.precoInicial * 0.1;
-          } else if (cupom === "2 por 1") {
-            desconto = form.precoInicial * 0.5;
-          }
-
-          setForm((prev) => ({
-            ...prev,
-            cupom,
-            desconto,
-          }));
+          setProdutoAtual((prev) => ({ ...prev, cupom: e.target.value }));
         }}
+        onBlur={aplicarCupom}
         displayEmpty
       >
         <MenuItem value="">Nenhum</MenuItem>
@@ -220,34 +202,51 @@ export default function CaixaForm() {
         <MenuItem value="10%">10%</MenuItem>
       </Select>
 
-      <TextField
-        label="Preço Inicial"
-        name="precoInicial"
-        type="text"
-        value={form.precoInicial}
+      <Button
+        variant="outlined"
         fullWidth
-        margin="normal"
-        Input={{ readOnly: true }}
-      />
+        sx={{ mt: 2 }}
+        onClick={adicionarProduto}
+        disabled={!produtoAtual.produto || produtoAtual.quantidade < 1}
+      >
+        Adicionar Produto
+      </Button>
 
-      <TextField
-        label="Desconto"
-        name="desconto"
-        type="text"
-        value={form.desconto}
-        fullWidth
-        margin="normal"
-        Input={{ readOnly: true }}
-      />
+      <Typography variant="h6" sx={{ mt: 3 }}>
+        Produtos Selecionados
+      </Typography>
+      {itens.length === 0 && (
+        <Typography>Nenhum produto adicionado.</Typography>
+      )}
+      {itens.map((item, i) => (
+        <Box
+          key={i}
+          sx={{
+            my: 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">
+            {item.quantidade}x {item.produto} - R$
+            {item.precoUnitario.toFixed(2)}{" "}
+            {item.cupom &&
+              `(Cupom: ${item.cupom}, Desc: R$${item.desconto.toFixed(2)})`}
+          </Typography>
+          <Button color="error" size="small" onClick={() => removerItem(i)}>
+            Remover
+          </Button>
+        </Box>
+      ))}
 
-      <Typography variant="subtitle1" sx={{ mt: 2 }}>
+      <Typography variant="subtitle1" sx={{ mt: 3 }}>
         Método de Pagamento
       </Typography>
       <Select
         fullWidth
-        name="metodo"
-        value={form.metodo}
-        onChange={handleChange}
+        value={metodo}
+        onChange={(e) => setMetodo(e.target.value)}
       >
         <MenuItem value="PIX">PIX</MenuItem>
         <MenuItem value="Dinheiro">Dinheiro</MenuItem>
@@ -255,33 +254,25 @@ export default function CaixaForm() {
         <MenuItem value="Débito">Débito</MenuItem>
       </Select>
 
-      {form.metodo === "Dinheiro" && (
+      {metodo === "Dinheiro" && (
         <TextField
           label="Pagamento"
-          name="pagamento"
           type="number"
-          value={form.pagamento}
-          onChange={handleChange}
+          value={pagamento}
+          onChange={(e) => setPagamento(parseFloat(e.target.value || 0))}
           fullWidth
           margin="normal"
         />
       )}
 
-      {/* <Button
-        variant="outlined"
-        fullWidth
-        onClick={calcularFinal}
-        sx={{ mt: 2 }}
-      >
-        Calcular Final
-      </Button> */}
-
       <Typography sx={{ mt: 2 }}>
-        <strong>💰 Preço Final:</strong> R$ {form.precoFinal.toFixed(2)}
+        <strong>💰 Preço Final:</strong> R$ {precoFinal.toFixed(2)}
       </Typography>
-      <Typography>
-        <strong>💵 Troco:</strong> R$ {form.troco.toFixed(2)}
-      </Typography>
+      {metodo === "Dinheiro" && (
+        <Typography>
+          <strong>💵 Troco:</strong> R$ {troco.toFixed(2)}
+        </Typography>
+      )}
 
       <Button
         variant="contained"
@@ -289,9 +280,19 @@ export default function CaixaForm() {
         fullWidth
         sx={{ mt: 2 }}
         onClick={enviarVenda}
+        disabled={itens.length === 0 || !metodo || !cliente.trim()}
       >
         Enviar Venda
       </Button>
+      <Box
+        sx={{ mt: 2, textAlign: "center", fontStyle: "italic" }}
+        color="text.secondary"
+      >
+        * Hambúrguer e Cupcake não aceitam "2 por 1". ** Os cupons não são
+        cumulativos. *** Lembre que o cupom "2 por 1" requer no mínimos 2 itens
+        do mesmo produto. **** Se o valor do produto for 9999, o produto está
+        indisponível!
+      </Box>
     </Box>
   );
 }
