@@ -19,10 +19,11 @@ export default function CaixaForm() {
     metodo: "",
     pagamento: 0,
     troco: 0,
+    quantidade: 1,
   });
 
   useEffect(() => {
-    const precoFinal = form.precoInicial - form.desconto;
+    const precoFinal = form.precoInicial * form.quantidade - form.desconto;
 
     const troco = form.metodo === "Dinheiro" ? form.pagamento - precoFinal : 0;
 
@@ -31,7 +32,13 @@ export default function CaixaForm() {
       precoFinal,
       troco,
     }));
-  }, [form.precoInicial, form.desconto, form.pagamento, form.metodo]);
+  }, [
+    form.precoInicial,
+    form.desconto,
+    form.pagamento,
+    form.metodo,
+    form.quantidade,
+  ]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,6 +50,7 @@ export default function CaixaForm() {
         "precoFinal",
         "pagamento",
         "troco",
+        "quantidade",
       ].includes(name)
         ? parseFloat(value || 0)
         : value,
@@ -60,13 +68,14 @@ export default function CaixaForm() {
   // };
 
   const enviarVenda = async () => {
-    const idGerado = `VENDA-${Date.now()}`;
+    const idGerado = `NEON-${Date.now()}`;
     const baseUrl =
       "https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec";
 
     const params = new URLSearchParams({
       id: idGerado,
       produto: form.produto,
+      quantidade: form.quantidade.toString(),
       precoInicial: form.precoInicial.toString(),
       cupom: form.cupom,
       desconto: form.desconto.toString(),
@@ -84,6 +93,7 @@ export default function CaixaForm() {
 
       setForm({
         produto: "",
+        quantidade: 1,
         precoInicial: 0,
         cupom: "",
         desconto: 0,
@@ -117,48 +127,68 @@ export default function CaixaForm() {
       <Typography variant="subtitle1" sx={{ mt: 2 }}>
         Produto
       </Typography>
-      <Select
-        fullWidth
-        name="produto"
-        value={form.produto}
-        onChange={async (e) => {
-          const produto = e.target.value;
-
-          try {
-            const res = await fetch(
-              `https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec?produto=${encodeURIComponent(
-                produto
-              )}`
-            );
-            const data = await res.json();
-
-            setForm((prev) => ({
-              ...prev,
-              produto,
-              precoInicial: parseFloat(data.preco || 0),
-              desconto: 0,
-              precoFinal: 0,
-              troco: 0,
-              cupom: "",
-            }));
-          } catch (error) {
-            alert("Erro ao buscar o preço.");
-            console.error(error);
-          }
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1,
+          justifyContent: "center",
+          mb: 2,
         }}
-        displayEmpty
       >
-        <MenuItem value="" disabled>
-          Selecione o Produto
-        </MenuItem>
-        <MenuItem value="Brigadeiro">Brigadeiro</MenuItem>
-        <MenuItem value="Bolo de Chocolate">Bolo de Chocolate</MenuItem>
-        <MenuItem value="Doguinho">Doguinho</MenuItem>
-        <MenuItem value="Correio Neon">Correio Neon</MenuItem>
-        <MenuItem value="Cupcake">Cupcake</MenuItem>
-        <MenuItem value="Hambúrguer">Hambúrguer</MenuItem>
-        <MenuItem value="Refri (200ml)">Refri (200ml)</MenuItem>
-      </Select>
+        {[
+          "Brigadeiro",
+          "Bolo de Chocolate",
+          "Doguinho",
+          "Correio Neon",
+          "Cupcake",
+          "Hambúrguer",
+          "Refri (150ml)",
+          "Água Saborizada (150ml)",
+        ].map((produto) => (
+          <Button
+            key={produto}
+            variant={form.produto === produto ? "contained" : "outlined"}
+            onClick={async () => {
+              try {
+                const res = await fetch(
+                  `https://script.google.com/macros/s/AKfycbwy0Lezl06IR-nRrsW-WR6LmapA5YEmawhcL1j5Ci4PKyjjbHoqruIyZC7m5EyJZ5-M/exec?produto=${encodeURIComponent(
+                    produto
+                  )}`
+                );
+                const data = await res.json();
+
+                setForm((prev) => ({
+                  ...prev,
+                  produto,
+                  precoInicial: parseFloat(data.preco || 0),
+                  desconto: 0,
+                  precoFinal: 0,
+                  troco: 0,
+                  cupom: "",
+                }));
+              } catch (error) {
+                alert("Erro ao buscar o preço.");
+                console.error(error);
+              }
+            }}
+            sx={{ minWidth: 120 }}
+          >
+            {produto}
+          </Button>
+        ))}
+      </Box>
+
+      <TextField
+        label="Quantidade"
+        name="quantidade"
+        type="number"
+        value={form.quantidade}
+        onChange={handleChange}
+        fullWidth
+        margin="normal"
+        input={{ min: 1 }}
+      />
 
       <Typography variant="subtitle1" sx={{ mt: 2 }}>
         Cupom
@@ -221,7 +251,7 @@ export default function CaixaForm() {
       >
         <MenuItem value="PIX">PIX</MenuItem>
         <MenuItem value="Dinheiro">Dinheiro</MenuItem>
-        <MenuItem value="Cartão">Crédito</MenuItem>
+        <MenuItem value="Crédito">Crédito</MenuItem>
         <MenuItem value="Débito">Débito</MenuItem>
       </Select>
 
