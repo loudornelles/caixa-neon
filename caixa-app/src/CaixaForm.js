@@ -121,10 +121,26 @@ export default function CaixaForm() {
   return (
     <Box
       component={Paper}
-      elevation={4}
-      sx={{ maxWidth: 500, mx: "auto", mt: 4, p: 3 }}
+      elevation={6}
+      sx={{
+        maxWidth: 600,
+        mx: "auto",
+        mt: 4,
+        p: 4,
+        borderRadius: 3,
+        backgroundColor: "#ffffffff",
+        color: "#5d0087ff",
+        boxShadow: "0 0 30px #ecc3ffff",
+        fontFamily: "monospace",
+      }}
     >
-      <Typography variant="h5" align="center" gutterBottom>
+      <Typography
+        variant="h4"
+        align="center"
+        fontWeight={300}
+        fontFamily={"fantasy"}
+        gutterBottom
+      >
         Caixa Neon
       </Typography>
 
