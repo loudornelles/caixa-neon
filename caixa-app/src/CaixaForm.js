@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -16,10 +16,22 @@ export default function CaixaForm() {
     cupom: "",
     desconto: 0,
     precoFinal: 0,
-    metodo: "Dinheiro",
+    metodo: "",
     pagamento: 0,
     troco: 0,
   });
+
+  useEffect(() => {
+    const precoFinal = form.precoInicial - form.desconto;
+
+    const troco = form.metodo === "Dinheiro" ? form.pagamento - precoFinal : 0;
+
+    setForm((prev) => ({
+      ...prev,
+      precoFinal,
+      troco,
+    }));
+  }, [form.precoInicial, form.desconto, form.pagamento, form.metodo]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,15 +49,15 @@ export default function CaixaForm() {
     }));
   };
 
-  const calcularFinal = () => {
-    const precoFinal = form.precoInicial - form.desconto;
-    const troco = form.pagamento - precoFinal;
-    setForm((prev) => ({
-      ...prev,
-      precoFinal,
-      troco,
-    }));
-  };
+  // const calcularFinal = () => {
+  //   const precoFinal = form.precoInicial - form.desconto;
+  //   const troco = form.pagamento - precoFinal;
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     precoFinal,
+  //     troco,
+  //   }));
+  // };
 
   const enviarVenda = async () => {
     const idGerado = `VENDA-${Date.now()}`;
@@ -76,7 +88,7 @@ export default function CaixaForm() {
         cupom: "",
         desconto: 0,
         precoFinal: 0,
-        metodo: "Dinheiro",
+        metodo: "",
         pagamento: 0,
         troco: 0,
       });
@@ -225,14 +237,14 @@ export default function CaixaForm() {
         />
       )}
 
-      <Button
+      {/* <Button
         variant="outlined"
         fullWidth
         onClick={calcularFinal}
         sx={{ mt: 2 }}
       >
         Calcular Final
-      </Button>
+      </Button> */}
 
       <Typography sx={{ mt: 2 }}>
         <strong>💰 Preço Final:</strong> R$ {form.precoFinal.toFixed(2)}
