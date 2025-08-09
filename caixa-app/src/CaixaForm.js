@@ -159,7 +159,6 @@ export default function CaixaForm() {
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
         {[
           "Cachorro-Quente",
-          "Brigadeiro",
           "Correio Neon",
           "Cupcake",
           "Doguinho",
