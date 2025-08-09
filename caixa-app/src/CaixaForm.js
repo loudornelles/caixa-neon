@@ -158,7 +158,7 @@ export default function CaixaForm() {
       </Typography>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
         {[
-          "Bolo de Chocolate",
+          "Cachorro-Quente",
           "Brigadeiro",
           "Correio Neon",
           "Cupcake",
@@ -166,6 +166,7 @@ export default function CaixaForm() {
           "Hambúrguer",
           "Refri (150ml)",
           "Água Saborizada (150ml)",
+          "Tortinha de Limão",
         ].map((nome) => (
           <Button
             key={nome}
